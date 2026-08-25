@@ -2,8 +2,8 @@
 
 APPS:
 
-• Current Weather
-• Weather Visual Widget (Current Weather Companion)
+• SkyPulse
+• Weather Visual Widget (SkyPulse Companion)
 
 KWGT WIDGETS APPS:
 

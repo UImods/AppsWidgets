@@ -9,7 +9,7 @@ The website displays the same banner and preview images already stored in the re
 
 It automatically finds and updates download links for the three public APKs and four protected card downloads:
 
-- CurrentWeather.apk
+- SkyPulse.apk
 - WeatherVisualsWidget.apk
 - DynamicWalls.apk
 - KWGT-SoundCloudPlayer-Protected.zip

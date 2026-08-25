@@ -9,10 +9,10 @@ const PASSWORD_ITERATIONS = 250000;
 
 const APPS = [
   {
-    key: "current",
-    friendly: "Current Weather",
-    aliases: ["currentweather"],
-    fallback: `https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/CurrentWeather.apk`,
+    key: "skypulse",
+    friendly: "SkyPulse",
+    aliases: ["skypulse"],
+    fallback: `https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/SkyPulse.apk`,
   },
   {
     key: "visual",

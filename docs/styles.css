@@ -58,7 +58,8 @@ h3 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .card-preview { min-width: 0; aspect-ratio: 3 / 2; overflow: hidden; border: 1px solid rgba(255,255,255,.13); border-radius: 16px; background: rgba(255,255,255,.04); box-shadow: 0 12px 30px rgba(0,0,0,.32), 0 0 24px rgba(138,180,255,.09); }
 .card-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; font-size: 27px; border: 1px solid rgba(255,255,255,.1); flex: 0 0 auto; }
-.icon.weather { background: linear-gradient(145deg, rgba(255,196,83,.22), rgba(125,158,255,.12)); }
+.icon.skypulse { overflow: hidden; background: #080b10; }
+.icon.skypulse img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .icon.visual { background: linear-gradient(145deg, rgba(118,174,255,.22), rgba(160,119,255,.14)); }
 .icon.dynamic { background: linear-gradient(145deg, rgba(255,190,91,.20), rgba(91,143,255,.18)); }
 .dynamic-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
