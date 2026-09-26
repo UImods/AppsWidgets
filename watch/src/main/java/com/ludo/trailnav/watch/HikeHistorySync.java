@@ -1,0 +1,2 @@
+package com.ludo.trailnav.watch;import android.content.Context;import com.google.android.gms.wearable.*;import com.ludo.trailnav.core.TrailLink;
+public final class HikeHistorySync{private HikeHistorySync(){}public static void push(Context c,String e){try{PutDataMapRequest r=PutDataMapRequest.create(TrailLink.HISTORY_PATH+"/"+System.currentTimeMillis());r.getDataMap().putString(TrailLink.HISTORY_ENTRY,e);Wearable.getDataClient(c).putDataItem(r.asPutDataRequest().setUrgent());}catch(Exception ignored){}}}
