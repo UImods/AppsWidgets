@@ -1,8 +1,8 @@
-name: Build Hiking Trails v0.1.30 final
+name: Build Hiking Trails v0.1.31 3D HUD
 on:
   push:
     branches:
-      - hiking-trails-v0130-final-build
+      - hiking-trails-v0131-3d-hud
 
 jobs:
   build:
@@ -28,45 +28,64 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Prepare exact approved build inputs
+      - name: Prepare approved launcher artwork and trail assets
         shell: bash
         run: |
           set -euo pipefail
-          curl -L --fail --retry 3 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-05d8-81f5-bf41-01339272ecc2/raw?se=2026-09-26T05%3A12%3A57Z&sp=r&sv=2026-02-06&sr=b&scid=25281bb2-f905-58c2-9302-7411bf7671c6&skoid=de71a0d5-fb02-4fce-be69-9296aced242b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-26T03%3A55%3A47Z&ske=2026-09-27T03%3A55%3A47Z&sks=b&skv=2026-02-06&sig=7OGK1Vm%2BC4/TlTmwHtv8nlm2%2BwJFRRLfIY1TiZFhzxQ%3D' -o /tmp/build_inputs.zip
-          echo '61ff2f7a0f90a225891522c7773ee05666e2333c6dd2c0e65e27bdc332b6df2b  /tmp/build_inputs.zip' | sha256sum -c -
-          mkdir -p phone/src/main/res/drawable-nodpi watch/src/main/res/drawable-nodpi
+          python -m pip install --quiet pillow
+          python - <<'PYICON'
+          from PIL import Image
+          import math, os
+          src=Image.open('icon_source.jpg').convert('RGB').resize((512,512),Image.Resampling.LANCZOS)
+          sp=src.load()
+          def bil(x,y):
+            x=max(0,min(511,x)); y=max(0,min(511,y)); x0=int(x);y0=int(y);x1=min(511,x0+1);y1=min(511,y0+1);fx=x-x0;fy=y-y0
+            a=sp[x0,y0];b=sp[x1,y0];c=sp[x0,y1];d=sp[x1,y1]
+            return tuple(int((1-fy)*((1-fx)*a[k]+fx*b[k])+fy*((1-fx)*c[k]+fx*d[k])) for k in range(3))
+          def phone(N=512,g=.78):
+            out=Image.new('RGB',(N,N));op=out.load()
+            for y in range(N):
+              ny=y/(N-1)*2-1; sy=math.copysign(abs(ny)**g,ny) if ny else 0
+              for x in range(N):
+                nx=x/(N-1)*2-1; sx=math.copysign(abs(nx)**g,nx) if nx else 0
+                op[x,y]=bil((sx+1)*.5*511,(sy+1)*.5*511)
+            return out
+          def watch(N=512,g=.78):
+            out=Image.new('RGB',(N,N));op=out.load()
+            for y in range(N):
+              ny=y/(N-1)*2-1
+              for x in range(N):
+                nx=x/(N-1)*2-1;r=math.hypot(nx,ny);th=math.atan2(ny,nx);rr=min(1,r);co=math.cos(th);si=math.sin(th);bd=1/max(abs(co),abs(si),1e-9);sr=(rr**g)*bd;sx=max(-1,min(1,sr*co));sy=max(-1,min(1,sr*si));op[x,y]=bil((sx+1)*.5*511,(sy+1)*.5*511)
+            return out
+          for mod,img in [('phone',phone()),('watch',watch())]:
+            os.makedirs(f'{mod}/src/main/res/drawable-nodpi',exist_ok=True)
+            img.save(f'{mod}/src/main/res/drawable-nodpi/hiking_icon_bg.jpg',quality=94,optimize=True)
+          PYICON
           mkdir -p phone/src/main/assets watch/src/main/assets
-          unzip -p /tmp/build_inputs.zip phone_icon.jpg > phone/src/main/res/drawable-nodpi/hiking_icon_bg.jpg
-          unzip -p /tmp/build_inputs.zip watch_icon.jpg > watch/src/main/res/drawable-nodpi/hiking_icon_bg.jpg
-          unzip -p /tmp/build_inputs.zip chapel_branch.gpx > phone/src/main/assets/chapel_branch.gpx
-          cp phone/src/main/assets/chapel_branch.gpx watch/src/main/assets/chapel_branch.gpx
+          cp chapel_branch.gpx phone/src/main/assets/chapel_branch.gpx
+          cp chapel_branch.gpx watch/src/main/assets/chapel_branch.gpx
           curl -L --fail --retry 3 'https://static.wixstatic.com/media/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg/v1/fill/w_900,h_900,fp_0.5_0.5,q_92/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg' -o phone/src/main/assets/chapel_branch_ready.jpg
           cp phone/src/main/assets/chapel_branch_ready.jpg watch/src/main/assets/chapel_branch_ready.jpg
-          test "$(sha256sum phone/src/main/res/drawable-nodpi/hiking_icon_bg.jpg | cut -d' ' -f1)" = "450907d100b07340a087b62e804eccc033a466ea606c38981c4e0522ee8db97d"
-          test "$(sha256sum watch/src/main/res/drawable-nodpi/hiking_icon_bg.jpg | cut -d' ' -f1)" = "73634783c6814afb6aaf16c843555871d23b673ce2b8d12a38e1ae83c81ff5b1"
-          test "$(sha256sum phone/src/main/assets/chapel_branch.gpx | cut -d' ' -f1)" = "95d3fd0ce37001326a7ac63a34f7574e1d3f2cf9cb000854a4393217cf32a245"
 
       - name: Build release APKs
         run: gradle :phone:assembleRelease :watch:assembleRelease --stacktrace
 
-      - name: Align and verify package metadata
+      - name: Align and verify
         shell: bash
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
           mkdir -p out/tools
-          "$BT/zipalign" -p -f 4 phone/build/outputs/apk/release/phone-release-unsigned.apk out/Hiking_Trails_PHONE_v0.1.30_ALIGNED_UNSIGNED.apk
-          "$BT/zipalign" -p -f 4 watch/build/outputs/apk/release/watch-release-unsigned.apk out/Hiking_Trails_WATCH_v0.1.30_ALIGNED_UNSIGNED.apk
-          "$BT/zipalign" -c -v 4 out/Hiking_Trails_PHONE_v0.1.30_ALIGNED_UNSIGNED.apk
-          "$BT/zipalign" -c -v 4 out/Hiking_Trails_WATCH_v0.1.30_ALIGNED_UNSIGNED.apk
+          "$BT/zipalign" -p -f 4 phone/build/outputs/apk/release/phone-release-unsigned.apk out/Hiking_Trails_PHONE_v0.1.31_ALIGNED_UNSIGNED.apk
+          "$BT/zipalign" -p -f 4 watch/build/outputs/apk/release/watch-release-unsigned.apk out/Hiking_Trails_WATCH_v0.1.31_3D_HUD_ALIGNED_UNSIGNED.apk
+          "$BT/zipalign" -c -v 4 out/Hiking_Trails_PHONE_v0.1.31_ALIGNED_UNSIGNED.apk
+          "$BT/zipalign" -c -v 4 out/Hiking_Trails_WATCH_v0.1.31_3D_HUD_ALIGNED_UNSIGNED.apk
           {
-            echo "HIKING TRAILS v0.1.30 PRE-SIGN VERIFICATION"
+            echo "HIKING TRAILS v0.1.31 3D HUD PRE-SIGN VERIFICATION"
             echo
-            echo "PHONE:"
-            "$BT/aapt" dump badging out/Hiking_Trails_PHONE_v0.1.30_ALIGNED_UNSIGNED.apk | grep -E "^(package:|application-label:|uses-feature:)" | head -20
+            "$BT/aapt" dump badging out/Hiking_Trails_PHONE_v0.1.31_ALIGNED_UNSIGNED.apk | grep -E "^(package:|application-label:|uses-feature:)" | head -20
             echo
-            echo "WATCH:"
-            "$BT/aapt" dump badging out/Hiking_Trails_WATCH_v0.1.30_ALIGNED_UNSIGNED.apk | grep -E "^(package:|application-label:|uses-feature:)" | head -20
+            "$BT/aapt" dump badging out/Hiking_Trails_WATCH_v0.1.31_3D_HUD_ALIGNED_UNSIGNED.apk | grep -E "^(package:|application-label:|uses-feature:)" | head -20
             echo
             sha256sum out/*.apk
           } > out/PRE_SIGN_VERIFY.txt
@@ -74,9 +93,9 @@ jobs:
           cp "$BT/aapt" out/tools/aapt
           chmod +x out/tools/aapt
 
-      - name: Upload unsigned aligned build
+      - name: Upload aligned unsigned build
         uses: actions/upload-artifact@v4
         with:
-          name: Hiking-Trails-v0.1.30-aligned-unsigned
+          name: Hiking-Trails-v0.1.31-3D-HUD-aligned-unsigned
           path: out/**
           retention-days: 1
