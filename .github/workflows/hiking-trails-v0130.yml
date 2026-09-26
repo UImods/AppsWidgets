@@ -1,0 +1,86 @@
+name: Build Hiking Trails v0.1.30
+on:
+  push:
+    branches: [hiking-trails-build-v0130]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore source payload
+        run: |
+          mkdir -p buildsrc
+          base64 -d hiking-trails-v0130-source.b64 > /tmp/hiking130.zip
+          unzip -q /tmp/hiking130.zip -d buildsrc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Generate exact launcher artwork
+        working-directory: buildsrc
+        run: |
+          python -m pip install --quiet pillow
+          python - <<'PY'
+          from PIL import Image
+          import math, os
+          src=Image.open('icon_source.jpg').convert('RGB').resize((512,512),Image.Resampling.LANCZOS)
+          sp=src.load()
+          def bil(x,y):
+              x=max(0,min(511,x)); y=max(0,min(511,y))
+              x0=int(x); y0=int(y); x1=min(511,x0+1); y1=min(511,y0+1); fx=x-x0; fy=y-y0
+              a=sp[x0,y0]; b=sp[x1,y0]; c=sp[x0,y1]; d=sp[x1,y1]
+              return tuple(int((1-fy)*((1-fx)*a[k]+fx*b[k])+fy*((1-fx)*c[k]+fx*d[k])) for k in range(3))
+          def phone(N=512,g=.78):
+              out=Image.new('RGB',(N,N)); op=out.load()
+              for y in range(N):
+                  ny=y/(N-1)*2-1; sy=math.copysign(abs(ny)**g,ny) if ny else 0
+                  for x in range(N):
+                      nx=x/(N-1)*2-1; sx=math.copysign(abs(nx)**g,nx) if nx else 0
+                      op[x,y]=bil((sx+1)*.5*511,(sy+1)*.5*511)
+              return out
+          def watch(N=512,g=.78):
+              out=Image.new('RGB',(N,N)); op=out.load()
+              for y in range(N):
+                  ny=y/(N-1)*2-1
+                  for x in range(N):
+                      nx=x/(N-1)*2-1
+                      r=math.hypot(nx,ny); th=math.atan2(ny,nx); rr=min(1,r)
+                      co=math.cos(th); si=math.sin(th); bd=1/max(abs(co),abs(si),1e-9)
+                      sr=(rr**g)*bd; sx=max(-1,min(1,sr*co)); sy=max(-1,min(1,sr*si))
+                      op[x,y]=bil((sx+1)*.5*511,(sy+1)*.5*511)
+              return out
+          for mod,img in [('phone',phone()),('watch',watch())]:
+              os.makedirs(f'{mod}/src/main/res/drawable-nodpi',exist_ok=True)
+              img.save(f'{mod}/src/main/res/drawable-nodpi/hiking_icon_bg.jpg',quality=94,optimize=True)
+          PY
+      - name: Add bundled Chapel Branch test assets
+        working-directory: buildsrc
+        run: |
+          mkdir -p phone/src/main/assets watch/src/main/assets
+          cp chapel_branch.gpx phone/src/main/assets/chapel_branch.gpx
+          cp chapel_branch.gpx watch/src/main/assets/chapel_branch.gpx
+          curl -L --fail --retry 3 'https://static.wixstatic.com/media/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg/v1/fill/w_900,h_900,fp_0.5_0.5,q_92/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg' -o phone/src/main/assets/chapel_branch_ready.jpg || true
+          if [ -s phone/src/main/assets/chapel_branch_ready.jpg ]; then cp phone/src/main/assets/chapel_branch_ready.jpg watch/src/main/assets/chapel_branch_ready.jpg; fi
+      - name: Build phone and watch APKs
+        working-directory: buildsrc
+        run: gradle :phone:assembleDebug :watch:assembleDebug --stacktrace
+      - name: Verify APK outputs
+        working-directory: buildsrc
+        run: |
+          test -s phone/build/outputs/apk/debug/phone-debug.apk
+          test -s watch/build/outputs/apk/debug/watch-debug.apk
+          cp phone/build/outputs/apk/debug/phone-debug.apk Hiking_Trails_PHONE_v0.1.30_DEBUG.apk
+          cp watch/build/outputs/apk/debug/watch-debug.apk Hiking_Trails_WATCH_v0.1.30_DEBUG.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hiking-Trails-v0.1.30-APKs
+          path: |
+            buildsrc/Hiking_Trails_PHONE_v0.1.30_DEBUG.apk
+            buildsrc/Hiking_Trails_WATCH_v0.1.30_DEBUG.apk
