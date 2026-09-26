@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-feature android:name="android.hardware.type.watch" android:required="false"/>
+ <application android:theme="@android:style/Theme.Material.NoActionBar" android:label="Hiking Trails" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:usesCleartextTraffic="false">
+  <activity android:name="com.ludo.trailnav.phone.PhoneActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+  <service android:name="com.ludo.trailnav.phone.PhoneHistoryReceiver" android:exported="true"><intent-filter><action android:name="com.google.android.gms.wearable.DATA_CHANGED"/><data android:scheme="wear" android:host="*" android:pathPrefix="/trail/history"/></intent-filter></service>
+ </application>
+</manifest>
