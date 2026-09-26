@@ -37,11 +37,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          curl -L --fail --retry 3 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-4888-81f5-9c94-dd6dc38db8cc/raw?se=2026-09-26T09%3A03%3A36Z&sp=r&sv=2026-02-06&sr=b&scid=aadf48de-3b86-5fe0-97f3-309ce28df30e&skoid=de71a0d5-fb02-4fce-be69-9296aced242b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-26T05%3A45%3A57Z&ske=2026-09-27T05%3A45%3A57Z&sks=b&skv=2026-02-06&sig=bTJ7HvUw4MBqWvXevoPn2SV0moP7aT7j/waBSUTtVEs%3D' -o /tmp/v0130src.zip
+          mkdir -p phone/src/main/res/drawable-nodpi watch/src/main/res/drawable-nodpi
+          mkdir -p phone/src/main/assets watch/src/main/assets
+          unzip -p /tmp/v0130src.zip icon_source.jpg > /tmp/icon_source.jpg
+          unzip -p /tmp/v0130src.zip chapel_branch.gpx > phone/src/main/assets/chapel_branch.gpx
+          cp phone/src/main/assets/chapel_branch.gpx watch/src/main/assets/chapel_branch.gpx
           python -m pip install --quiet pillow
           python - <<'PYICON'
           from PIL import Image
           import math, os
-          src=Image.open('icon_source.jpg').convert('RGB').resize((512,512),Image.Resampling.LANCZOS)
+          src=Image.open('/tmp/icon_source.jpg').convert('RGB').resize((512,512),Image.Resampling.LANCZOS)
           sp=src.load()
           def bil(x,y):
             x=max(0,min(511,x)); y=max(0,min(511,y)); x0=int(x);y0=int(y);x1=min(511,x0+1);y1=min(511,y0+1);fx=x-x0;fy=y-y0
@@ -63,13 +69,12 @@ jobs:
                 nx=x/(N-1)*2-1;r=math.hypot(nx,ny);th=math.atan2(ny,nx);rr=min(1,r);co=math.cos(th);si=math.sin(th);bd=1/max(abs(co),abs(si),1e-9);sr=(rr**g)*bd;sx=max(-1,min(1,sr*co));sy=max(-1,min(1,sr*si));op[x,y]=bil((sx+1)*.5*511,(sy+1)*.5*511)
             return out
           for mod,img in [('phone',phone()),('watch',watch())]:
-            os.makedirs(f'{mod}/src/main/res/drawable-nodpi',exist_ok=True)
             img.save(f'{mod}/src/main/res/drawable-nodpi/hiking_icon_bg.jpg',quality=94,optimize=True)
           PYICON
-          mkdir -p phone/src/main/assets watch/src/main/assets
-          cp chapel_branch.gpx phone/src/main/assets/chapel_branch.gpx
-          cp chapel_branch.gpx watch/src/main/assets/chapel_branch.gpx
-          curl -L --fail --retry 3 'https://static.wixstatic.com/media/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg/v1/fill/w_900,h_900,fp_0.5_0.5,q_92/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg' -o phone/src/main/assets/chapel_branch_ready.jpg
+          unzip -p /tmp/v0130src.zip phone/src/main/assets/chapel_branch_ready.jpg > phone/src/main/assets/chapel_branch_ready.jpg || true
+          if [ ! -s phone/src/main/assets/chapel_branch_ready.jpg ]; then
+            curl -L --fail --retry 3 'https://static.wixstatic.com/media/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg/v1/fill/w_900,h_900,fp_0.5_0.5,q_92/c33130_a0fc3236d1594c578a5297f609e86f62~mv2.jpg' -o phone/src/main/assets/chapel_branch_ready.jpg
+          fi
           cp phone/src/main/assets/chapel_branch_ready.jpg watch/src/main/assets/chapel_branch_ready.jpg
 
       - name: Build release APKs
